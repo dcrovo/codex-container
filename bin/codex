@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SOURCE="${BASH_SOURCE[0]}"
+
+while [[ -L "$SOURCE" ]]; do
+    DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+    SOURCE="$(readlink "$SOURCE")"
+    [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+FIRST_ARG="${1:-}"
+
+case "$FIRST_ARG" in
+    --build)
+        exec "$REPO_ROOT/scripts/build-image.sh" --build
+        ;;
+
+    --update|--rebuild)
+        exec "$REPO_ROOT/scripts/build-image.sh" --update
+        ;;
+
+    --shell)
+        shift
+        exec "$REPO_ROOT/scripts/run-container.sh" --shell "$@"
+        ;;
+
+    --help-sandbox)
+        cat <<EOF
+Codex Docker Sandbox
+
+Usage:
+  codex                 Run Codex inside sandbox using current directory as /workspace
+  codex --build         Build Docker image
+  codex --update        Rebuild image using latest base image and latest Codex
+  codex --rebuild       Same as --update
+  codex --shell         Open bash shell inside sandbox
+  codex --version       Show Codex version inside container
+  codex login           Login to Codex inside persistent Docker volume
+
+Environment:
+  CODEX_SANDBOX_IMAGE   Default: local/codex-sandbox:latest
+EOF
+        exit 0
+        ;;
+
+    *)
+        exec "$REPO_ROOT/scripts/run-container.sh" "$@"
+        ;;
+esac
